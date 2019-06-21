@@ -1,0 +1,26 @@
+{
+  "name": "react-native-license-screen-cli",
+  "version": "1.0.0",
+  "description": "CLI for checking npm license data",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
+    "lint": "tslint -p tsconfig.json"
+  },
+  "author": "James Macindoe",
+  "license": "MIT",
+  "files": [
+    "lib/**/*"
+  ],
+  "dependencies": {
+    "license-checker": "^25.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^3.5.2"
+  }
+}
