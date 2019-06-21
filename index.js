@@ -1,1 +1,1 @@
-// TODO
+export * from "./src/LicenseScreen"
