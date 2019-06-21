@@ -1,7 +1,7 @@
 {
   "name": "react-native-license-screen",
   "version": "0.0.1",
-  "description": "A license screen for react-native apps",
+  "description": "A license screen for React Native apps",
   "main": "index.js",
   "scripts": {
     "build": "tsc",
