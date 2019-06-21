@@ -15,7 +15,8 @@
   "author": "James Macindoe",
   "license": "MIT",
   "files": [
-    "lib/**/*"
+    "lib/**/*",
+    "src/**/*"
   ],
   "devDependencies": {
     "@types/jest": "^24.0.15",
