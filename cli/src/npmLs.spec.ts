@@ -1,7 +1,10 @@
 import { npmLs } from "./npmLs"
 
 describe("npmLs", () => {
-  test("data is in expected io-ts format", async () => {
-    await expect(npmLs()).resolves.toBeDefined()
+  it("returns data for the current package", async () => {
+    const data = await npmLs()
+    expect(data.name).toEqual("react-native-license-screen-cli")
+    expect(data.version).toBeDefined()
+    expect(data.dependencies).toBeDefined()
   })
 })
