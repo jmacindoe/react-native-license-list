@@ -3,7 +3,7 @@ import { PathReporter } from "io-ts/lib/PathReporter"
 import { load as loadNpm } from "npm"
 
 // This is not officially documented
-type Ls = (
+type NpmLs = (
   args: any[],
   silent: boolean,
   cb: (error: string | undefined, verboseData: any, liteData: any) => void,
@@ -38,7 +38,7 @@ export function npmLs(): Promise<NpmLsTreeRoot> {
       }
 
       // @ts-ignore - type definition is missing
-      const ls: Ls = npm.commands.ls
+      const ls: NpmLs = npm.commands.ls
 
       ls([], true, (err, verboseData, liteData) => {
         if (err) {
