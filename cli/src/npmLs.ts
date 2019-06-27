@@ -1,30 +1,78 @@
 import * as t from "io-ts"
 import { PathReporter } from "io-ts/lib/PathReporter"
 import { load as loadNpm } from "npm"
+import { RecordExt } from "./ext/RecordExt"
 
-// This is not officially documented
+/**
+ * A module to return data similar to `npm ls --json` but with some clean up so
+ * the data is easier to work with.
+ */
+
+
+/// Output data format
+
+export interface DependencyTreeRoot {
+  name: string
+  version: string
+  dependencies: Record<string, DependencyTreeNode>
+}
+
+export interface DependencyTreeNode {
+  from: string
+  version: string
+  dependencies: Record<string, DependencyTreeNode>
+}
+
+
+/// Input data format from `npm ls`
+
+const UnmetPeerDependency = t.type({
+  peerMissing: t.literal(true),
+})
+
+type UnmetPeerDependency = t.TypeOf<typeof UnmetPeerDependency>
+
+interface NpmLsTreeNode {
+  from: string
+  version: string
+  dependencies?: Record<string, NpmLsTreeNode | UnmetPeerDependency>
+}
+
+const NpmLsTreeNode: t.Type<NpmLsTreeNode> = t.recursion(
+  "NpmLsTreeNode",
+  () => {
+    const required = t.type({
+      from: t.string,
+      version: t.string,
+    })
+    const partial = t.partial({
+      dependencies: t.union([
+        t.undefined,
+        t.record(t.string, t.union([NpmLsTreeNode, UnmetPeerDependency])),
+      ]),
+    })
+    return t.intersection([required, partial])
+  },
+)
+
+const NpmLsTreeRoot = t.type({
+  name: t.string,
+  version: t.string,
+  dependencies: t.union([
+    t.undefined,
+    t.record(t.string, t.union([NpmLsTreeNode, UnmetPeerDependency])),
+  ]),
+})
+
+type NpmLsTreeRoot = t.TypeOf<typeof NpmLsTreeRoot>
+
 type NpmLs = (
   args: any[],
   silent: boolean,
   cb: (error: string | undefined, verboseData: any, liteData: any) => void,
 ) => void
 
-const NpmLsTreeNode = t.type({
-  from: t.string,
-  resolved: t.string,
-  version: t.string,
-})
-
-const NpmLsTreeRoot = t.type({
-  name: t.string,
-  version: t.string,
-  dependencies: t.record(t.string, NpmLsTreeNode),
-})
-
-export type NpmLsTreeNode = t.TypeOf<typeof NpmLsTreeNode>
-export type NpmLsTreeRoot = t.TypeOf<typeof NpmLsTreeRoot>
-
-export function npmLs(): Promise<NpmLsTreeRoot> {
+export function npmLs(): Promise<DependencyTreeRoot> {
   return new Promise((resolve, reject) => {
     loadNpm((error, npm) => {
       if (error) {
@@ -37,12 +85,12 @@ export function npmLs(): Promise<NpmLsTreeRoot> {
         return
       }
 
-      // @ts-ignore - type definition is missing
+      // @ts-ignore - type definition is missing/not officially documented
       const ls: NpmLs = npm.commands.ls
 
       ls([], true, (err, verboseData, liteData) => {
         if (err) {
-          reject(err)
+          reject(new Error(err))
           return
         }
 
@@ -56,7 +104,8 @@ export function npmLs(): Promise<NpmLsTreeRoot> {
         if (resultOrError instanceof Error) {
           reject(resultOrError)
         } else {
-          resolve(resultOrError)
+          const result = stripUnmetPeerDependencies(resultOrError)
+          resolve(result)
         }
       })
     })
@@ -78,4 +127,43 @@ function validateData<A>(
   } else {
     return decoded.value
   }
+}
+
+function stripUnmetPeerDependencies(lsData: NpmLsTreeRoot): DependencyTreeRoot {
+  return {
+    name: lsData.name,
+    version: lsData.version,
+    dependencies: lsData.dependencies
+      ? RecordExt.compactMapValues(lsData.dependencies, filterPeerDependencies)
+      : {},
+  }
+}
+
+function stripPeerDependenciesFromNode(
+  lsData: NpmLsTreeNode,
+): DependencyTreeNode {
+  return {
+    from: lsData.from,
+    version: lsData.version,
+    dependencies: lsData.dependencies
+      ? RecordExt.compactMapValues(lsData.dependencies, filterPeerDependencies)
+      : {},
+  }
+}
+
+function filterPeerDependencies(
+  dependency: NpmLsTreeNode | UnmetPeerDependency,
+): DependencyTreeNode | null {
+  if (isUnmetPeerDependency(dependency)) {
+    return null
+  } else {
+    return stripPeerDependenciesFromNode(dependency)
+  }
+}
+
+function isUnmetPeerDependency(
+  dependency: NpmLsTreeNode | UnmetPeerDependency,
+): dependency is UnmetPeerDependency {
+  // @ts-ignore
+  return dependency.peerMissing
 }
