@@ -73,23 +73,33 @@ describe("npmLs", () => {
   })
 
   it("parses direct dependencies", async () => {
-    const data = (allFields: boolean) => ({
+    const input = {
       name: "the project",
       version: "1.0.1",
       dependencies: {
         "the-dep": {
           from: "the-dep@^2.0.0",
           version: "2.1.0",
-          ...(allFields ? { dependencies: {} } : {}),
         },
       },
-    })
-    mockNpmLoad(require("npm"), data(false))
-    await expect(npmLs()).resolves.toEqual(data(true))
+    }
+    const expected = {
+      name: "the project",
+      version: "1.0.1",
+      dependencies: [
+        {
+          name: "the-dep",
+          version: "2.1.0",
+          dependencies: [],
+        },
+      ],
+    }
+    mockNpmLoad(require("npm"), input)
+    await expect(npmLs()).resolves.toEqual(expected)
   })
 
   it("parses transitive dependencies", async () => {
-    const data = (allFields: boolean) => ({
+    const input = {
       name: "the project",
       version: "1.0.1",
       dependencies: {
@@ -100,18 +110,34 @@ describe("npmLs", () => {
             "transitive-dep": {
               from: "transitive-dep@0.0.1",
               version: "0.0.1",
-              ...(allFields ? { dependencies: {} } : {}),
             },
           },
         },
       },
-    })
-    mockNpmLoad(require("npm"), data(false))
-    await expect(npmLs()).resolves.toEqual(data(true))
+    }
+    const expected = {
+      name: "the project",
+      version: "1.0.1",
+      dependencies: [
+        {
+          name: "the-dep",
+          version: "2.1.0",
+          dependencies: [
+            {
+              name: "transitive-dep",
+              version: "0.0.1",
+              dependencies: [],
+            },
+          ],
+        },
+      ],
+    }
+    mockNpmLoad(require("npm"), input)
+    await expect(npmLs()).resolves.toEqual(expected)
   })
 
   it("strips unmet peer dependencies", async () => {
-    const data = {
+    const input = {
       name: "the project",
       version: "1.0.1",
       dependencies: {
@@ -129,17 +155,18 @@ describe("npmLs", () => {
         },
       },
     }
-    mockNpmLoad(require("npm"), data)
-    await expect(npmLs()).resolves.toEqual({
+    const expected = {
       name: "the project",
       version: "1.0.1",
-      dependencies: {
-        "the-dep": {
-          from: "the-dep@^2.0.0",
+      dependencies: [
+        {
+          name: "the-dep",
           version: "2.1.0",
-          dependencies: {},
+          dependencies: [],
         },
-      },
-    })
+      ],
+    }
+    mockNpmLoad(require("npm"), input)
+    await expect(npmLs()).resolves.toEqual(expected)
   })
 })

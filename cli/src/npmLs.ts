@@ -1,28 +1,19 @@
 import * as t from "io-ts"
 import { PathReporter } from "io-ts/lib/PathReporter"
 import { load as loadNpm } from "npm"
-import { RecordExt } from "./ext/RecordExt"
 
 /**
  * A module to return data similar to `npm ls --json` but with some clean up so
  * the data is easier to work with.
  */
 
-
 /// Output data format
 
-export interface DependencyTreeRoot {
+export interface DependencyTreeNode {
   name: string
   version: string
-  dependencies: Record<string, DependencyTreeNode>
+  dependencies: DependencyTreeNode[]
 }
-
-export interface DependencyTreeNode {
-  from: string
-  version: string
-  dependencies: Record<string, DependencyTreeNode>
-}
-
 
 /// Input data format from `npm ls`
 
@@ -72,7 +63,7 @@ type NpmLs = (
   cb: (error: string | undefined, verboseData: any, liteData: any) => void,
 ) => void
 
-export function npmLs(): Promise<DependencyTreeRoot> {
+export function npmLs(): Promise<DependencyTreeNode> {
   return new Promise((resolve, reject) => {
     loadNpm((error, npm) => {
       if (error) {
@@ -104,7 +95,7 @@ export function npmLs(): Promise<DependencyTreeRoot> {
         if (resultOrError instanceof Error) {
           reject(resultOrError)
         } else {
-          const result = stripUnmetPeerDependencies(resultOrError)
+          const result = cleanRoot(resultOrError)
           resolve(result)
         }
       })
@@ -129,36 +120,38 @@ function validateData<A>(
   }
 }
 
-function stripUnmetPeerDependencies(lsData: NpmLsTreeRoot): DependencyTreeRoot {
-  return {
-    name: lsData.name,
-    version: lsData.version,
-    dependencies: lsData.dependencies
-      ? RecordExt.compactMapValues(lsData.dependencies, filterPeerDependencies)
-      : {},
-  }
+function cleanRoot(lsData: NpmLsTreeRoot): DependencyTreeNode {
+  return cleanNpmLsData(lsData.name, lsData.version, lsData.dependencies)
 }
 
-function stripPeerDependenciesFromNode(
-  lsData: NpmLsTreeNode,
+function cleanNpmLsData(
+  name: string,
+  version: string,
+  dependencies?: Record<string, NpmLsTreeNode | UnmetPeerDependency>,
 ): DependencyTreeNode {
   return {
-    from: lsData.from,
-    version: lsData.version,
-    dependencies: lsData.dependencies
-      ? RecordExt.compactMapValues(lsData.dependencies, filterPeerDependencies)
-      : {},
+    name,
+    version,
+    dependencies: cleanDependencies(dependencies),
   }
 }
 
-function filterPeerDependencies(
-  dependency: NpmLsTreeNode | UnmetPeerDependency,
+function cleanDependencies(
+  dependencies: Record<string, NpmLsTreeNode | UnmetPeerDependency> = {},
+): DependencyTreeNode[] {
+  return Object.entries(dependencies)
+    .map(([name, npmLsEntry]) => cleanDependency(name, npmLsEntry))
+    .filter(isDefined)
+}
+
+function cleanDependency(
+  name: string,
+  npmLsEntry: NpmLsTreeNode | UnmetPeerDependency,
 ): DependencyTreeNode | null {
-  if (isUnmetPeerDependency(dependency)) {
+  if (isUnmetPeerDependency(npmLsEntry)) {
     return null
-  } else {
-    return stripPeerDependenciesFromNode(dependency)
   }
+  return cleanNpmLsData(name, npmLsEntry.version, npmLsEntry.dependencies)
 }
 
 function isUnmetPeerDependency(
@@ -166,4 +159,12 @@ function isUnmetPeerDependency(
 ): dependency is UnmetPeerDependency {
   // @ts-ignore
   return dependency.peerMissing
+}
+
+function isDefined<T>(value: T | null | undefined): value is T {
+  if (value === null || value === undefined) {
+    return false
+  } else {
+    return true
+  }
 }
