@@ -64,6 +64,13 @@ type NpmLs = (
 ) => void
 
 export function npmLs(): Promise<DependencyTreeNode> {
+  return loadNpmLs()
+    .then(performLs)
+    .then(validateData(NpmLsTreeRoot))
+    .then(cleanRootData)
+}
+
+function loadNpmLs(): Promise<NpmLs> {
   return new Promise((resolve, reject) => {
     loadNpm((error, npm) => {
       if (error) {
@@ -78,49 +85,46 @@ export function npmLs(): Promise<DependencyTreeNode> {
 
       // @ts-ignore - type definition is missing/not officially documented
       const ls: NpmLs = npm.commands.ls
-
-      ls([], true, (err, verboseData, liteData) => {
-        if (err) {
-          reject(new Error(err))
-          return
-        }
-
-        if (!liteData) {
-          reject(new Error("No data from npm ls"))
-          return
-        }
-
-        const resultOrError = validateData(NpmLsTreeRoot, liteData)
-
-        if (resultOrError instanceof Error) {
-          reject(resultOrError)
-        } else {
-          const result = cleanRoot(resultOrError)
-          resolve(result)
-        }
-      })
+      resolve(ls)
     })
   })
 }
 
-function validateData<A>(
-  type: t.InterfaceType<any, A, any>,
-  data: any,
-): Error | A {
-  const decoded = type.decode(data)
-  if (decoded.isLeft()) {
-    const errors = PathReporter.report(decoded)
-    return new Error(
-      `Data does not match expected format. Data: ${JSON.stringify(
-        data,
-      )}. Errors: ${errors}.`,
-    )
-  } else {
-    return decoded.value
+function performLs(ls: NpmLs): Promise<any> {
+  return new Promise((resolve, reject) => {
+    ls([], true, (err, verboseData, liteData) => {
+      if (err) {
+        reject(new Error(err))
+        return
+      }
+
+      if (!liteData) {
+        reject(new Error("No data from npm ls"))
+        return
+      }
+
+      resolve(liteData)
+    })
+  })
+}
+
+function validateData<A>(type: t.InterfaceType<any, A, any>): (data: any) => A {
+  return (data: any) => {
+    const decoded = type.decode(data)
+    if (decoded.isLeft()) {
+      const errors = PathReporter.report(decoded)
+      throw new Error(
+        `Data does not match expected format. Data: ${JSON.stringify(
+          data,
+        )}. Errors: ${errors}.`,
+      )
+    } else {
+      return decoded.value
+    }
   }
 }
 
-function cleanRoot(lsData: NpmLsTreeRoot): DependencyTreeNode {
+function cleanRootData(lsData: NpmLsTreeRoot): DependencyTreeNode {
   return cleanNpmLsData(lsData.name, lsData.version, lsData.dependencies)
 }
 
