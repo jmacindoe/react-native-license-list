@@ -161,7 +161,7 @@ function cleanDependency(
 function isUnmetPeerDependency(
   dependency: NpmLsTreeNode | UnmetPeerDependency,
 ): dependency is UnmetPeerDependency {
-  // @ts-ignore
+  // @ts-ignore - TS can't infer what having peerMissing = true means
   return dependency.peerMissing
 }
 
