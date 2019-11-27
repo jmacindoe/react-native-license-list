@@ -1,3 +1,3 @@
-# react-native-license-screen
+# react-native-license-list
 
 WIP
