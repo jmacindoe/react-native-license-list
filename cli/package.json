@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "run": "npm run build && node lib/index.js",
     "test": "jest",
     "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
     "lint": "tslint -p tsconfig.json"
