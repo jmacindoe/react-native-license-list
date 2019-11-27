@@ -21,10 +21,12 @@
     "array-flat-polyfill": "^1.0.1",
     "io-ts": "^1.10.2",
     "license-checker": "^25.0.1",
-    "npm": "^6.9.0"
+    "npm": "^6.9.0",
+    "yargs": "^13.2.4"
   },
   "devDependencies": {
     "@types/license-checker": "^25.0.0",
+    "@types/node": "^12.12.7",
     "@types/npm": "^2.0.30",
     "typescript": "^3.5.2"
   }
