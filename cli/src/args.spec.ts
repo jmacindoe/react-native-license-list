@@ -25,4 +25,29 @@ describe("args", () => {
     expect(actual.outputPath).toEqual("file.json")
     expect(actual.project).toEqual("/foo/bar")
   })
+
+  it("should exit 1 if both --out and --verify are specified", done => {
+    expectOutputCode(1, "--verify --out foo", done)
+  })
+
+  it("should exit 1 if there are no cli arguments", done => {
+    expectOutputCode(1, "", done)
+  })
 })
+
+function expectOutputCode(
+  expectedCode: number,
+  cliArg: string,
+  done: jest.DoneCallback,
+) {
+  const args = [path.join(__dirname, "../lib/index.js")].concat(
+    cliArg.split(" "),
+  )
+  spawn("node", args, {
+    cwd: path.join(__dirname, "../"),
+    stdio: "ignore",
+  }).on("exit", function(code) {
+    expect(code).toEqual(expectedCode)
+    done()
+  })
+}
